@@ -11,35 +11,59 @@ var PAINEL_RAMO = 'main';
 var PAINEL_MINUTOS_CACHE = 10;
 var painelCache_ = null;
 
-function painelBaixar_(caminho) {
-  var cache = CacheService.getScriptCache();
-  var chave = 'painel:' + caminho;
+function painelLerCache_(cache, chave) {
   var partes = Number(cache.get(chave + ':n') || 0);
-  if (partes > 0) {
-    var nomes = [];
-    for (var i = 0; i < partes; i++) nomes.push(chave + ':' + i);
-    var achados = cache.getAll(nomes);
-    if (Object.keys(achados).length === partes) return nomes.map(function (n) { return achados[n]; }).join('');
-  }
-  var token = PropertiesService.getScriptProperties().getProperty('GITHUB_TOKEN');
-  var cabecalhos = { Accept: 'application/vnd.github.raw' };
-  if (token) cabecalhos.Authorization = 'Bearer ' + token;
-  var url = 'https://api.github.com/repos/' + PAINEL_REPO + '/contents/' + caminho + '?ref=' + PAINEL_RAMO;
-  var resposta = UrlFetchApp.fetch(url, { headers: cabecalhos, muteHttpExceptions: true });
-  if (resposta.getResponseCode() !== 200) {
-    throw new Error('[502] Não consegui baixar o painel do GitHub (' + resposta.getResponseCode() + '). Confira o repositório ' + PAINEL_REPO + (token ? '' : ' ou crie a chave GITHUB_TOKEN se ele for privado') + '.');
-  }
-  var texto = resposta.getContentText('UTF-8');
+  if (!partes) return null;
+  var nomes = [];
+  for (var i = 0; i < partes; i++) nomes.push(chave + ':' + i);
+  var achados = cache.getAll(nomes);
+  if (Object.keys(achados).length !== partes) return null;
+  return nomes.map(function (n) { return achados[n]; }).join('');
+}
+
+function painelGravarCache_(cache, chave, texto, segundos) {
   var pedacos = {};
   var n = 0;
   for (var p = 0; p < texto.length; p += 90000) pedacos[chave + ':' + n++] = texto.slice(p, p + 90000);
   pedacos[chave + ':n'] = String(n);
   try {
-    cache.putAll(pedacos, PAINEL_MINUTOS_CACHE * 60);
+    cache.putAll(pedacos, segundos);
   } catch (e) {
     // sem cache, tudo bem
   }
-  return texto;
+}
+
+function painelBaixar_(caminho) {
+  var cache = CacheService.getScriptCache();
+  var chave = 'painel:' + caminho;
+  var guardado = painelLerCache_(cache, chave);
+  if (guardado) return guardado;
+
+  var token = PropertiesService.getScriptProperties().getProperty('GITHUB_TOKEN');
+  var auth = token ? { Authorization: 'Bearer ' + token } : {};
+  // 1) raw.githubusercontent.com (sem limite apertado de acessos); 2) API do GitHub.
+  var tentativas = [
+    { url: 'https://raw.githubusercontent.com/' + PAINEL_REPO + '/' + PAINEL_RAMO + '/' + caminho, headers: auth },
+    {
+      url: 'https://api.github.com/repos/' + PAINEL_REPO + '/contents/' + caminho + '?ref=' + PAINEL_RAMO,
+      headers: Object.assign({ Accept: 'application/vnd.github.raw' }, auth),
+    },
+  ];
+  var codigo = 0;
+  for (var i = 0; i < tentativas.length; i++) {
+    var resposta = UrlFetchApp.fetch(tentativas[i].url, { headers: tentativas[i].headers, muteHttpExceptions: true });
+    codigo = resposta.getResponseCode();
+    if (codigo === 200) {
+      var texto = resposta.getContentText('UTF-8');
+      painelGravarCache_(cache, chave, texto, PAINEL_MINUTOS_CACHE * 60);
+      painelGravarCache_(cache, 'reserva:' + chave, texto, 21600); // cópia de segurança por 6 horas
+      return texto;
+    }
+  }
+  // GitHub fora do ar ou limitando: usa a última cópia boa.
+  var reserva = painelLerCache_(cache, 'reserva:' + chave);
+  if (reserva) return reserva;
+  throw new Error('[502] Não consegui baixar o painel do GitHub (' + codigo + '). Confira o repositório ' + PAINEL_REPO + (token ? '' : ' ou crie a chave GITHUB_TOKEN se ele for privado') + '.');
 }
 
 function painel_() {
