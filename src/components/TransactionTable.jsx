@@ -163,16 +163,22 @@ function EditableRow({ transaction, onCancel, onSave, onOpenForm }) {
 
 const normalizeSearch = (v) => String(v ?? '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
 
-export default function TransactionTable({ transactions, readOnly, busy, onUpdate, onDelete, onEdit, month, monthName }) {
-  const [filter, setFilter] = useState('all');
+export default function TransactionTable({
+  transactions, readOnly, busy, onUpdate, onDelete, onEdit, month, monthName,
+  fixedType, filterFn, forceAll = false, title = 'Histórico de transações', subtitle,
+}) {
+  const [typeFilter, setFilter] = useState('all');
+  const filter = fixedType ?? typeFilter;
   const [query, setQuery] = useState('');
-  const [allMonths, setAllMonths] = useState(false);
+  const [allMonthsState, setAllMonths] = useState(false);
+  const allMonths = forceAll || allMonthsState;
   const [editingId, setEditingId] = useState(null);
 
   const rows = useMemo(
     () =>
       transactions
         .filter((t) => filter === 'all' || t.type === filter)
+        .filter((t) => !filterFn || filterFn(t))
         .filter((t) => allMonths || !month || t.date.startsWith(month))
         .filter((t) => {
           if (!query.trim()) return true;
@@ -180,7 +186,7 @@ export default function TransactionTable({ transactions, readOnly, busy, onUpdat
           return normalizeSearch(query).trim().split(/\s+/).every((word) => haystack.includes(word));
         })
         .sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : a.row - b.row)),
-    [transactions, filter, month, allMonths, query],
+    [transactions, filter, filterFn, month, allMonths, query],
   );
 
   // Mês escolhido: Receitas e Despesas separadas. Todos os meses: um bloco por mês.
@@ -224,9 +230,11 @@ export default function TransactionTable({ transactions, readOnly, busy, onUpdat
     <section aria-label="Histórico de transações" className="card">
       <div className="flex flex-col gap-3 border-b border-border p-5 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h2 className="text-base font-semibold">Histórico de transações</h2>
+          <h2 className="text-base font-semibold">{title}</h2>
           <p className="text-sm text-muted-foreground">
-            {rows.length} lançamento(s) {allMonths || !month ? 'em todos os meses' : `em ${monthName}`}
+            {subtitle ? `${subtitle} · ` : ''}
+            {rows.length} lançamento(s) · {formatCurrency(rows.reduce((sum, t) => sum + t.amount, 0))}
+            {!subtitle && (allMonths || !month ? ' em todos os meses' : ` em ${monthName}`)}
           </p>
         </div>
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
@@ -241,12 +249,13 @@ export default function TransactionTable({ transactions, readOnly, busy, onUpdat
             onChange={(e) => setQuery(e.target.value)}
           />
         </div>
-        {month && (
+        {month && !forceAll && (
           <label className="flex cursor-pointer items-center gap-2 whitespace-nowrap text-xs text-muted-foreground">
             <input type="checkbox" className="h-4 w-4 accent-emerald-500" checked={allMonths} onChange={(e) => setAllMonths(e.target.checked)} />
             Todos os meses
           </label>
         )}
+        {!fixedType && (
         <div className="flex rounded-lg border border-border p-0.5 text-xs sm:text-sm" role="group" aria-label="Filtrar por tipo">
           {FILTERS.map((f) => (
             <button
@@ -262,6 +271,7 @@ export default function TransactionTable({ transactions, readOnly, busy, onUpdat
             </button>
           ))}
         </div>
+        )}
         </div>
       </div>
 

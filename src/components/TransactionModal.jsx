@@ -74,7 +74,7 @@ function Select({ id, value, onChange, options, placeholder }) {
  * Formulário de receita/despesa com os mesmos campos e listas da planilha.
  * Sem `initial` cria; com `initial` edita.
  */
-export default function TransactionModal({ open, initial, options, onClose, onSave }) {
+export default function TransactionModal({ open, initial, defaultType, options, onClose, onSave }) {
   const [form, setForm] = useState(() => formFrom(initial));
   const [errors, setErrors] = useState({});
   const [submitError, setSubmitError] = useState(null);
@@ -83,7 +83,7 @@ export default function TransactionModal({ open, initial, options, onClose, onSa
 
   useEffect(() => {
     if (!open) return;
-    setForm(formFrom(initial));
+    setForm(formFrom(initial, defaultType));
     setErrors({});
     setSubmitError(null);
     setSending(false);
@@ -96,7 +96,7 @@ export default function TransactionModal({ open, initial, options, onClose, onSa
       window.removeEventListener('keydown', onKey);
       document.body.style.overflow = '';
     };
-  }, [open, initial, onClose]);
+  }, [open, initial, defaultType, onClose]);
 
   if (!open) return null;
 

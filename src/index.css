@@ -34,3 +34,35 @@
     @apply mb-1.5 block text-sm font-medium text-zinc-300;
   }
 }
+
+/* ===== Movimento ===== */
+@layer utilities {
+  .anim-fade-up { animation: fade-up 0.5s cubic-bezier(0.22, 1, 0.36, 1) both; }
+  .anim-fade { animation: fade 0.35s ease-out both; }
+  .anim-float { animation: float 4s ease-in-out infinite; }
+  .anim-bar { transform-box: fill-box; transform-origin: bottom; animation: bar-grow 0.9s cubic-bezier(0.22, 1, 0.36, 1) both; }
+  .anim-draw { stroke-dasharray: 60; stroke-dashoffset: 60; animation: draw 1.1s 0.35s ease-out forwards; }
+  .anim-grow-x { transform-origin: left; animation: grow-x 0.9s cubic-bezier(0.22, 1, 0.36, 1) both; }
+  .anim-shine { position: relative; overflow: hidden; }
+  .anim-shine::after {
+    content: ''; position: absolute; inset: 0;
+    background: linear-gradient(110deg, transparent 30%, rgba(255, 255, 255, 0.08) 50%, transparent 70%);
+    transform: translateX(-100%); animation: shine 6s ease-in-out infinite;
+  }
+  .bokeh { position: absolute; border-radius: 9999px; filter: blur(28px); opacity: 0.35; animation: drift 18s ease-in-out infinite alternate; }
+  .glow-ring { box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.04), 0 8px 30px -12px var(--glow, rgba(16, 185, 129, 0.45)); }
+}
+
+@keyframes fade-up { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+@keyframes fade { from { opacity: 0; } to { opacity: 1; } }
+@keyframes float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-4px); } }
+@keyframes bar-grow { from { transform: scaleY(0); } to { transform: scaleY(1); } }
+@keyframes grow-x { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+@keyframes draw { to { stroke-dashoffset: 0; } }
+@keyframes shine { 0%, 70% { transform: translateX(-100%); } 100% { transform: translateX(100%); } }
+@keyframes drift { from { transform: translate(0, 0) scale(1); } to { transform: translate(24px, -36px) scale(1.25); } }
+
+@media (prefers-reduced-motion: reduce) {
+  .anim-fade-up, .anim-fade, .anim-float, .anim-bar, .anim-grow-x, .bokeh, .anim-shine::after { animation: none !important; }
+  .anim-draw { animation: none; stroke-dashoffset: 0; }
+}

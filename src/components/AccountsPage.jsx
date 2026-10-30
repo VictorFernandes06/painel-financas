@@ -89,7 +89,7 @@ function AccountCard({ account, readOnly, busy, onEdit, onDelete, onSend }) {
 }
 
 /** Página "Contas": onde o dinheiro está, saldos e transferências. */
-export default function AccountsPage({ data, readOnly }) {
+export default function AccountsPage({ data, readOnly, tab = 'saldos' }) {
   const { accounts, transfers, transactions, saving } = data;
   const [accountModal, setAccountModal] = useState(null); // null | { account? }
   const [transferModal, setTransferModal] = useState(null); // null | { to? }
@@ -121,7 +121,8 @@ export default function AccountsPage({ data, readOnly }) {
 
   return (
     <div className="space-y-6">
-      <section className="card flex flex-col gap-4 p-5 sm:flex-row sm:items-center sm:justify-between">
+      {tab === 'saldos' && (<>
+      <section className="card anim-fade-up flex flex-col gap-4 p-5 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <p className="text-sm font-medium text-muted-foreground">Total nas contas</p>
           <p className={`mt-1 text-3xl font-semibold tracking-tight ${summary.total < 0 ? 'text-expense' : 'text-income'}`}>
@@ -160,7 +161,7 @@ export default function AccountsPage({ data, readOnly }) {
           )}
         </section>
       ) : (
-        <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+        <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3 [&>*]:anim-fade-up">
           {summary.accounts.map((a) => (
             <AccountCard
               key={a.row}
@@ -186,10 +187,20 @@ export default function AccountsPage({ data, readOnly }) {
         </p>
       )}
 
-      <section className="card">
-        <div className="border-b border-border p-5">
+      </>)}
+
+      {tab === 'transferencias' && (
+      <section className="card anim-fade-up">
+        <div className="flex items-start justify-between gap-3 border-b border-border p-5">
+          <div>
           <h2 className="font-semibold">Transferências</h2>
           <p className="text-xs text-muted-foreground">Dinheiro que mudou de conta. Não conta como receita nem despesa.</p>
+          </div>
+          {!readOnly && accounts.length >= 2 && (
+            <button type="button" className="btn-primary" onClick={() => setTransferModal({})}>
+              <ArrowLeftRight className="h-4 w-4" aria-hidden /> Nova transferência
+            </button>
+          )}
         </div>
         {recentTransfers.length === 0 ? (
           <p className="p-5 text-sm text-muted-foreground">Nenhuma transferência ainda.</p>
@@ -215,6 +226,7 @@ export default function AccountsPage({ data, readOnly }) {
           </ul>
         )}
       </section>
+      )}
 
       <AccountModal
         open={accountModal !== null}
