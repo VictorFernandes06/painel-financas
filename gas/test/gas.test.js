@@ -182,18 +182,21 @@ test('despesa parcelada lança uma parcela por mês', () => {
   }), /parcelas restantes/);
 });
 
-test('carregador baixa o painel do GitHub, usa cache e a chave quando houver', () => {
+test('carregador baixa o painel do GitHub, usa cache, a chave e o plano B', () => {
   const files = {
     'gas/dist/painel-server.js': readFileSync(new URL('../dist/painel-server.js', import.meta.url), 'utf8'),
     'gas/dist/index.html': readFileSync(new URL('../dist/index.html', import.meta.url), 'utf8'),
   };
   const fetches = [];
   const store = {};
+  let rawDown = false;
   ctx.UrlFetchApp = {
     fetch: (url, opts) => {
       fetches.push({ url, auth: opts.headers.Authorization });
-      const path = url.split('/contents/')[1].split('?')[0];
-      return { getResponseCode: () => (files[path] ? 200 : 404), getContentText: () => files[path] };
+      const raw = url.startsWith('https://raw.githubusercontent.com/VictorFernandes06/painel-financas/main/');
+      const path = raw ? url.split('/main/')[1] : url.split('/contents/')[1].split('?')[0];
+      const ok = files[path] && !(raw && rawDown);
+      return { getResponseCode: () => (ok ? 200 : 403), getContentText: () => files[path] };
     },
   };
   ctx.CacheService = { getScriptCache: () => ({
@@ -203,14 +206,37 @@ test('carregador baixa o painel do GitHub, usa cache e a chave quando houver', (
   }) };
   ctx.PropertiesService = { getScriptProperties: () => ({ getProperty: () => 'tok' }) };
   let served = null;
-  ctx.HtmlService = { createHtmlOutput: (h) => { served = h; const o = { setTitle: () => o, addMetaTag: () => o }; return o; } };
+  let favicon = null;
+  ctx.HtmlService = { createHtmlOutput: (h) => {
+    served = h;
+    const o = { setTitle: () => o, addMetaTag: () => o, setFaviconUrl: (u) => { favicon = u; return o; } };
+    return o;
+  } };
   vm.runInContext(readFileSync(new URL('../dist/Loader.gs', import.meta.url), 'utf8'), ctx);
   ctx.doGet();
   assert.equal(served, files['gas/dist/index.html']);
+  assert.match(favicon, /icon-180\.png$/);
+  const first = fetches.length;
   ctx.doGet();
-  assert.equal(fetches.length, 1, 'segunda abertura vem do cache');
+  assert.equal(fetches.length, first, 'segunda abertura vem do cache');
   assert.equal(fetches[0].auth, 'Bearer tok');
-  assert.match(fetches[0].url, /VictorFernandes06\/painel-financas\/contents\/gas\/dist\/index.html\?ref=main/);
+  assert.match(fetches[0].url, /^https:\/\/raw\.githubusercontent\.com\/VictorFernandes06\/painel-financas\/main\/gas\/dist\//);
+
+  // raw fora do ar: usa a API do GitHub
+  for (const k of Object.keys(store)) if (!k.startsWith('reserva:')) delete store[k];
+  rawDown = true;
+  fetches.length = 0;
+  ctx.doGet();
+  assert.equal(served, files['gas/dist/index.html']);
+  assert.ok(fetches.some((f) => /api\.github\.com\/repos\/VictorFernandes06\/painel-financas\/contents\/gas\/dist\/index\.html\?ref=main/.test(f.url)));
+
+  // GitHub todo fora: usa a cópia de segurança
+  for (const k of Object.keys(store)) if (!k.startsWith('reserva:')) delete store[k];
+  files['gas/dist/index.html'] = undefined;
+  served = null;
+  ctx.doGet();
+  assert.ok(served && served.length > 1000, 'abre com a cópia de segurança');
+
   assert.equal(JSON.parse(JSON.stringify(ctx.apiCall('status', []))).mode, 'google-apps-script');
   assert.throws(() => ctx.apiCall('constructor', []), /\[404\]/);
 });
