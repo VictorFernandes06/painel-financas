@@ -27,6 +27,11 @@ export function validateTransactionInput(body, options) {
   const account = str(input.account);
   if (account && options?.accounts && !options.accounts.includes(account)) errors.push(`Conta "${account}" não está cadastrada.`);
   const value = { type, date, category, description, account, amount: Math.round(amount * 100) / 100 };
+  if (type === TYPES.INCOME) {
+    const receivedAt = str(input.receivedAt);
+    if (receivedAt && !/^\d{4}-\d{2}-\d{2}$/.test(receivedAt)) errors.push('Data de recebimento inválida.');
+    value.receivedAt = receivedAt;
+  }
 
   // Recorrente (salário, aluguel) ou parcelas: um lançamento por mês, no mesmo dia.
   const repeat = input.repeat == null || input.repeat === '' ? 1 : Number(input.repeat);

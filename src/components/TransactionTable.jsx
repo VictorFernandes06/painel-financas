@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { ArrowDownCircle, ArrowUpCircle, Check, CheckCircle2, Clock, Flag, Loader2, Maximize2, Pencil, Search, Trash2, TriangleAlert, X } from 'lucide-react';
 import { STATUSES, TYPES } from '../data/categories';
-import { formatCurrency, formatDate, monthLabel, parseAmountInput } from '../utils/format';
+import { formatCurrency, formatDate, monthLabel, parseAmountInput, toISODate } from '../utils/format';
 
 const FILTERS = [
   { value: 'all', label: 'Ver todas' },
@@ -150,6 +150,74 @@ function PayFlag({ transaction, accounts = [], onPay, disabled }) {
   );
 }
 
+/** Selo da receita: "Recebido" em verde (com a data, se veio antes) ou "A receber". */
+function IncomePill({ transaction, today }) {
+  const got = (transaction.receivedAt || transaction.date) <= today;
+  if (got) {
+    return (
+      <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/15 px-2 py-0.5 text-xs font-semibold text-emerald-300 shadow-[0_0_12px_rgba(52,211,153,0.35)] ring-1 ring-emerald-400/50">
+        <CheckCircle2 className="h-3.5 w-3.5" aria-hidden /> Recebido
+        {transaction.receivedAt && transaction.receivedAt !== transaction.date && (
+          <span className="font-normal text-emerald-200/80">em {formatDate(transaction.receivedAt).slice(0, 5)}</span>
+        )}
+      </span>
+    );
+  }
+  return (
+    <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/10 px-2 py-0.5 text-xs font-medium text-amber-300 ring-1 ring-amber-400/30">
+      <Clock className="h-3.5 w-3.5" aria-hidden /> A receber
+    </span>
+  );
+}
+
+/** Bandeira "marcar recebido": data em que caiu (pode ser antecipado) e conta. */
+function ReceiveFlag({ transaction, accounts = [], onReceive, disabled, today }) {
+  const [open, setOpen] = useState(false);
+  const [date, setDate] = useState(today);
+  const [account, setAccount] = useState(transaction.account || '');
+  const [busy, setBusy] = useState(false);
+  if (!open) {
+    return (
+      <button
+        type="button"
+        disabled={disabled}
+        onClick={() => setOpen(true)}
+        className="inline-flex items-center gap-1 rounded-full border border-emerald-400/40 px-2 py-0.5 text-xs font-medium text-emerald-300 transition-colors hover:bg-emerald-500/15 hover:shadow-[0_0_12px_rgba(52,211,153,0.35)] disabled:opacity-40"
+        title="Marcar como recebido (inclusive antecipado)"
+      >
+        <Flag className="h-3.5 w-3.5" aria-hidden /> Marcar recebido
+      </button>
+    );
+  }
+  const confirm = async () => {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return;
+    setBusy(true);
+    try {
+      await onReceive(transaction, { date, account });
+    } catch {
+      setBusy(false);
+    }
+  };
+  return (
+    <span className="inline-flex flex-wrap items-center gap-1">
+      <input type="date" aria-label="Recebido em" className="input h-7 w-36 px-2 py-0 text-xs [color-scheme:dark]" value={date} onChange={(e) => setDate(e.target.value)} />
+      {accounts.length > 0 && (
+        <select aria-label="Caiu em qual conta" className="input h-7 w-36 px-2 py-0 text-xs" value={account} onChange={(e) => setAccount(e.target.value)}>
+          <option value="">Caiu em qual conta?</option>
+          {accounts.map((a) => <option key={a} value={a}>{a}</option>)}
+        </select>
+      )}
+      <button type="button" onClick={confirm} disabled={busy}
+        className="inline-flex h-7 items-center gap-1 rounded-md bg-emerald-500/20 px-2 text-xs font-semibold text-emerald-300 hover:bg-emerald-500/30 disabled:opacity-60">
+        {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Check className="h-3.5 w-3.5" />} Recebido
+      </button>
+      <button type="button" onClick={() => setOpen(false)} disabled={busy} className="rounded-md p-1 text-muted-foreground hover:text-zinc-100" aria-label="Cancelar">
+        <X className="h-3.5 w-3.5" />
+      </button>
+    </span>
+  );
+}
+
 /** Título e categoria exibidos de cada lançamento. */
 const titleOf = (t) => t.description || t.category;
 const categoryOf = (t) => (t.type === TYPES.EXPENSE ? `${t.group} › ${t.category}` : t.category);
@@ -237,9 +305,9 @@ const normalizeSearch = (v) => String(v ?? '').normalize('NFD').replace(/[\u0300
 
 export default function TransactionTable({
   transactions, readOnly, busy, onUpdate, onDelete, onEdit, month, monthName,
-  fixedType, filterFn, forceAll = false, title = 'Histórico de transações', subtitle, accounts = [], onPay,
+  fixedType, filterFn, forceAll = false, title = 'Histórico de transações', subtitle, accounts = [], onPay, onReceive,
 }) {
-  const todayISO = new Date().toISOString().slice(0, 10);
+  const todayISO = toISODate(new Date());
   const [typeFilter, setFilter] = useState('all');
   const filter = fixedType ?? typeFilter;
   const [query, setQuery] = useState('');
@@ -367,7 +435,7 @@ export default function TransactionTable({
                   <th className="px-5 py-3 font-medium">Data</th>
                   <th className="px-5 py-3 font-medium">Descrição</th>
                   <th className="px-5 py-3 font-medium">Categoria</th>
-                  <th className="px-5 py-3 font-medium">{fixedType ? (fixedType === TYPES.INCOME ? 'Conta' : 'Status') : 'Tipo / Status'}</th>
+                  <th className="px-5 py-3 font-medium">{fixedType ? 'Status' : 'Tipo / Status'}</th>
                   <th className="px-5 py-3 text-right font-medium">Valor</th>
                   <th className="w-px px-5 py-3"><span className="sr-only">Ações</span></th>
                 </tr>
@@ -412,6 +480,10 @@ export default function TransactionTable({
                         <span className="flex flex-wrap items-center gap-1.5">
                           {fixedType ? null : <TypeBadge type={t.type} />}
                           <StatusPill status={t.status} overdue={t.date < todayISO} />
+                          {t.type === TYPES.INCOME && <IncomePill transaction={t} today={todayISO} />}
+                          {t.type === TYPES.INCOME && (t.receivedAt || t.date) > todayISO && !readOnly && onReceive && (
+                            <ReceiveFlag transaction={t} accounts={accounts} onReceive={onReceive} disabled={busy} today={todayISO} />
+                          )}
                           {t.status && t.status !== 'Pago' && !readOnly && onPay && (
                             <PayFlag transaction={t} accounts={accounts} onPay={onPay} disabled={busy} />
                           )}
@@ -472,6 +544,14 @@ export default function TransactionTable({
                     {t.account && <span> · {t.account}</span>}
                   </p>
                 </button>
+                {t.type === TYPES.INCOME && (
+                  <span className="mt-1.5 flex flex-wrap items-center gap-1.5">
+                    <IncomePill transaction={t} today={todayISO} />
+                    {(t.receivedAt || t.date) > todayISO && !readOnly && onReceive && (
+                      <ReceiveFlag transaction={t} accounts={accounts} onReceive={onReceive} disabled={busy} today={todayISO} />
+                    )}
+                  </span>
+                )}
                 {t.status && (
                   <span className="mt-1.5 flex flex-wrap items-center gap-1.5">
                     <StatusPill status={t.status} overdue={t.date < todayISO} />

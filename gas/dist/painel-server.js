@@ -54,7 +54,8 @@ var Painel = (() => {
         description: ["observacao", "observacoes", "descricao"],
         month: ["mes"],
         year: ["ano"],
-        account: ["conta"]
+        account: ["conta"],
+        receivedAt: ["recebido em", "recebido", "data do recebimento"]
       },
       required: ["date", "category", "amount"]
     },
@@ -166,7 +167,7 @@ var Painel = (() => {
       description: text(cell("description")),
       account: text(cell("account"))
     };
-    if (type === TYPES.INCOME) return { transaction: base };
+    if (type === TYPES.INCOME) return { transaction: { ...base, receivedAt: parseDate(cell("receivedAt")) ?? "" } };
     return {
       transaction: {
         ...base,
@@ -201,7 +202,8 @@ var Painel = (() => {
       installment: t.installment ?? "",
       installments: t.installments ?? "",
       status: t.status ?? "",
-      account: safeText(t.account ?? "")
+      account: safeText(t.account ?? ""),
+      receivedAt: t.receivedAt ? toSerial(t.receivedAt) : ""
     };
     for (const [field, index] of Object.entries(columns)) {
       if (field in values) row[index] = values[field];
@@ -236,7 +238,9 @@ var Painel = (() => {
     return Array.from({ length: repeat }, (_, i) => ({
       ...base,
       date: addMonths(base.date, i),
-      ...parcelado ? { installment: base.installment + i } : {}
+      ...parcelado ? { installment: base.installment + i } : {},
+      // "Recebido em" vale só para o primeiro mês.
+      ...i > 0 && base.receivedAt ? { receivedAt: "" } : {}
     }));
   }
 
@@ -261,6 +265,11 @@ var Painel = (() => {
     const account = str(input.account);
     if (account && options?.accounts && !options.accounts.includes(account)) errors.push(`Conta "${account}" não está cadastrada.`);
     const value = { type, date, category, description, account, amount: Math.round(amount * 100) / 100 };
+    if (type === TYPES.INCOME) {
+      const receivedAt = str(input.receivedAt);
+      if (receivedAt && !/^\d{4}-\d{2}-\d{2}$/.test(receivedAt)) errors.push("Data de recebimento inválida.");
+      value.receivedAt = receivedAt;
+    }
     const repeat = input.repeat == null || input.repeat === "" ? 1 : Number(input.repeat);
     if (!Number.isInteger(repeat) || repeat < 1 || repeat > 60) errors.push("Repetir: escolha de 1 a 60 meses.");
     else if (repeat > 1) value.repeat = repeat;
@@ -450,6 +459,9 @@ var Painel = (() => {
     function prepareRow(input, columns, width) {
       const row = transactionToRow(input, columns, width);
       row[columns.date] = Utilities2.parseDate(input.date, tz(), "yyyy-MM-dd");
+      if (columns.receivedAt !== void 0) {
+        row[columns.receivedAt] = input.receivedAt ? Utilities2.parseDate(input.receivedAt, tz(), "yyyy-MM-dd") : "";
+      }
       return row;
     }
     function checkRow(type, rowNumber, expected) {

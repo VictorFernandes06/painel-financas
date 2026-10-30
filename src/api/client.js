@@ -26,7 +26,7 @@ async function request(method, path, body) {
   return data;
 }
 
-const FIELDS = ['type', 'date', 'category', 'description', 'amount', 'group', 'nature', 'payment', 'card', 'installment', 'installments', 'status', 'repeat', 'account'];
+const FIELDS = ['type', 'date', 'category', 'description', 'amount', 'group', 'nature', 'payment', 'card', 'installment', 'installments', 'status', 'repeat', 'account', 'receivedAt'];
 const payload = (t) => Object.fromEntries(FIELDS.filter((f) => t[f] !== undefined).map((f) => [f, t[f]]));
 /** O que o servidor confere antes de alterar a linha (proteção contra linha errada). */
 const fingerprint = ({ date, amount, category, description }) => ({ date, amount, category, description });

@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { ArrowLeftRight, ArrowRight, Check, Landmark, Loader2, Pencil, Plus, Trash2, X } from 'lucide-react';
 import { computeBalances, monthlyToGoal } from '../../shared/accounts.js';
-import { formatCurrency, formatDate, monthLabel, toISODate } from '../utils/format';
+import { formatCurrency, formatDate, monthLabel, receivedOn, toISODate } from '../utils/format';
 import AccountModal from './AccountModal';
 import TransferModal from './TransferModal';
 
@@ -98,7 +98,7 @@ export default function AccountsPage({ data, readOnly, tab = 'saldos' }) {
   const summary = useMemo(() => {
     // Só o que já aconteceu: receitas até hoje e despesas pagas.
     const today = toISODate(new Date());
-    const happened = transactions.filter((t) => (t.type === 'receita' ? t.date <= today : t.status === 'Pago' || (!t.status && t.date <= today)));
+    const happened = transactions.filter((t) => (t.type === 'receita' ? receivedOn(t) <= today : t.status === 'Pago' || (!t.status && t.date <= today)));
     return computeBalances(accounts, happened, transfers);
   }, [accounts, transactions, transfers]);
   const recentTransfers = useMemo(

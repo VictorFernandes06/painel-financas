@@ -114,7 +114,7 @@ export function rowToTransaction(row, rowNumber, columns, type) {
     description: text(cell('description')),
     account: text(cell('account')),
   };
-  if (type === TYPES.INCOME) return { transaction: base };
+  if (type === TYPES.INCOME) return { transaction: { ...base, receivedAt: parseDate(cell('receivedAt')) ?? '' } };
 
   return {
     transaction: {
@@ -161,6 +161,7 @@ export function transactionToRow(t, columns, width) {
     installments: t.installments ?? '',
     status: t.status ?? '',
     account: safeText(t.account ?? ''),
+    receivedAt: t.receivedAt ? toSerial(t.receivedAt) : '',
   };
   for (const [field, index] of Object.entries(columns)) {
     if (field in values) row[index] = values[field];
@@ -218,5 +219,7 @@ export function expandRepeat(input) {
     ...base,
     date: addMonths(base.date, i),
     ...(parcelado ? { installment: base.installment + i } : {}),
+    // "Recebido em" vale só para o primeiro mês.
+    ...(i > 0 && base.receivedAt ? { receivedAt: '' } : {}),
   }));
 }

@@ -86,6 +86,9 @@ export function createGasBackend({ SpreadsheetApp, Utilities, LockService }) {
     const row = transactionToRow(input, columns, width);
     // A data vai como Date no fuso da planilha (respeita a validação de data).
     row[columns.date] = Utilities.parseDate(input.date, tz(), 'yyyy-MM-dd');
+    if (columns.receivedAt !== undefined) {
+      row[columns.receivedAt] = input.receivedAt ? Utilities.parseDate(input.receivedAt, tz(), 'yyyy-MM-dd') : '';
+    }
     return row;
   }
 

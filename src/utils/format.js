@@ -40,3 +40,6 @@ export function parseAmountInput(raw) {
   const normalized = text.includes(',') ? text.replace(/\./g, '').replace(',', '.') : text;
   return Number(normalized);
 }
+
+/** Dia em que a receita entrou de fato ("Recebido em" ou a própria data). */
+export const receivedOn = (t) => t.receivedAt || t.date;

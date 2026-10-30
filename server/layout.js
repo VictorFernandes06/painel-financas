@@ -16,6 +16,7 @@ export const LAYOUT = {
       month: ['mes'],
       year: ['ano'],
       account: ['conta'],
+      receivedAt: ['recebido em', 'recebido', 'data do recebimento'],
     },
     required: ['date', 'category', 'amount'],
   },

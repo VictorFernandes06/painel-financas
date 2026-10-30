@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { AlertCircle, CalendarClock, CreditCard, Loader2, Pencil, Target, X } from 'lucide-react';
 import { TYPES } from '../data/categories';
-import { formatCurrency, monthKey, monthLabel, parseAmountInput, toISODate } from '../utils/format';
+import { formatCurrency, monthKey, monthLabel, parseAmountInput, receivedOn, toISODate } from '../utils/format';
 
 const todayISO = () => toISODate(new Date());
 const addMonthKey = (key, n) => {
@@ -45,7 +45,7 @@ function Forecast({ transactions, startBalance, onOpenBills }) {
         const inMonth = k === key || (i === 0 && k < key);
         if (!inMonth) continue;
         if (t.type === TYPES.INCOME) {
-          if (t.date > today) entra += t.amount;
+          if (receivedOn(t) > today) entra += t.amount;
         } else if (t.status && t.status !== 'Pago') {
           sai += t.amount;
           count += 1;

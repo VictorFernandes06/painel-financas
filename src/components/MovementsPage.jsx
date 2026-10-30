@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { CalendarRange } from 'lucide-react';
 import { TYPES, groupColor } from '../data/categories';
-import { MONTH_NAMES, formatCurrency, monthKey, monthLabel, toISODate } from '../utils/format';
+import { MONTH_NAMES, formatCurrency, monthKey, monthLabel, receivedOn, toISODate } from '../utils/format';
 import { useCountUp } from '../hooks/useCountUp';
 import TransactionTable from './TransactionTable';
 
@@ -130,8 +130,8 @@ export default function MovementsPage({ type, tab, data, month, monthName, readO
     const unpaid = mine.filter((t) => t.status && t.status !== 'Pago');
     return {
       month: sum(inMonth),
-      received: sum(inMonth.filter((t) => t.date <= today)),
-      toReceive: sum(inMonth.filter((t) => t.date > today)),
+      received: sum(inMonth.filter((t) => receivedOn(t) <= today)),
+      toReceive: sum(inMonth.filter((t) => receivedOn(t) > today)),
       next3: sum(mine.filter((t) => next3.has(t.date.slice(0, 7)))),
       year: sum(mine.filter((t) => t.date.startsWith(String(y)))),
       paid: sum(inMonth.filter((t) => t.status === 'Pago' || !t.status)),
@@ -190,7 +190,7 @@ export default function MovementsPage({ type, tab, data, month, monthName, readO
         {isIncome ? (
           <>
             <Kpi label={`Total em ${monthName}`} value={stats.month} tone="income" delay={0} />
-            <Kpi label="Já recebido" value={stats.received} tone="income" delay={60} hint="Com data até hoje" />
+            <Kpi label="Já recebido" value={stats.received} tone="income" delay={60} hint="Já caiu na conta" />
             <Kpi label="A receber no mês" value={stats.toReceive} tone="amber" delay={120} />
             <Kpi label="Próximos 3 meses" value={stats.next3} tone="sky" delay={180} hint={`${formatCurrency(stats.year)} no ano`} />
           </>
@@ -259,6 +259,7 @@ export default function MovementsPage({ type, tab, data, month, monthName, readO
             onEdit={onEdit}
             accounts={data.options?.accounts ?? []}
             onPay={(t, account) => data.update(t, { status: 'Pago', ...(account ? { account } : {}) })}
+            onReceive={(t, { date, account }) => data.update(t, { receivedAt: date, account })}
           />
         </div>
       ) : current ? null : (

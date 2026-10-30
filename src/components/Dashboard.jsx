@@ -3,7 +3,7 @@ import { AlertTriangle, ChevronLeft, ChevronRight, Loader2, Menu, Plus, RefreshC
 import { useLocalStorage } from '../hooks/useLocalStorage';
 import { useTransactions } from '../hooks/useTransactions';
 import { TYPES } from '../data/categories';
-import { formatCurrency, monthKey, MONTH_NAMES, toISODate } from '../utils/format';
+import { formatCurrency, monthKey, MONTH_NAMES, receivedOn, toISODate } from '../utils/format';
 import { computeBalances } from '../../shared/accounts.js';
 import TransactionModal from './TransactionModal';
 import AccountsPage from './AccountsPage';
@@ -66,7 +66,7 @@ export default function Dashboard() {
     // Saldo de hoje: só o que já aconteceu (receitas até hoje, despesas pagas).
     // Lançamentos futuros (salários e contas dos próximos meses) não entram.
     const happened = transactions.filter((t) =>
-      t.type === TYPES.INCOME ? t.date <= todayISO : t.status === 'Pago' || (!t.status && t.date <= todayISO),
+      t.type === TYPES.INCOME ? receivedOn(t) <= todayISO : t.status === 'Pago' || (!t.status && t.date <= todayISO),
     );
     const accounts = computeBalances(data.accounts, happened, data.transfers);
     let balance = 0;

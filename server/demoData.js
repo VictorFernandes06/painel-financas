@@ -30,7 +30,7 @@ const VARIATION = [1, 0.92, 1.08, 0.97, 1.12, 0.95];
 
 /** Abas Cadastro, Receitas e Despesas com 6 meses de exemplo. */
 export function createDemoTabs(today = new Date()) {
-  const receitas = [['RECEITAS'], ['Data', 'Receita', 'Valor', 'Observação', 'Mês', 'Ano']];
+  const receitas = [['RECEITAS'], ['Data', 'Receita', 'Valor', 'Observação', 'Mês', 'Ano', 'Conta', 'Recebido em']];
   const despesas = [
     ['DESPESAS'],
     ['Data', 'Grupo', 'Despesa', 'Tipo', 'Forma de pagamento', 'Cartão', 'Parcela', 'Total de parcelas', 'Valor', 'Descrição', 'Status', 'Mês', 'Ano'],

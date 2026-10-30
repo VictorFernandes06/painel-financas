@@ -178,3 +178,20 @@ test('aceita despesa sem forma de pagamento (linhas antigas da planilha)', async
   const bad = await call('POST', '/transactions', expense({ payment: 'Boleto' }));
   assert.equal(bad.status, 400);
 });
+
+test('receita guarda "Recebido em" quando a coluna existe', async () => {
+  const receitas = [
+    ['RECEITAS'],
+    ['Data', 'Receita', 'Valor', 'Observação', 'Mês', 'Ano', 'Conta', 'Recebido em'],
+    [toSerial('2026-12-01'), 'Salário', 4998, '', 'dezembro', 2026, '', ''],
+  ];
+  await start({ tabs: { Cadastro: CADASTRO, Receitas: receitas, Despesas: DESPESAS } });
+  const list = await call('GET', '/transactions');
+  const salary = list.body.transactions.find((t) => t.type === 'receita');
+  assert.equal(salary.receivedAt, '');
+  const res = await call('PUT', '/transactions/receita/3', { transaction: { ...salary, receivedAt: '2026-11-28' }, expected: salary });
+  assert.ok(res.status < 300, JSON.stringify(res.body));
+  assert.equal(client.tabs.Receitas[2][7], toSerial('2026-11-28'));
+  const again = await call('GET', '/transactions');
+  assert.equal(again.body.transactions.find((t) => t.type === 'receita').receivedAt, '2026-11-28');
+});
