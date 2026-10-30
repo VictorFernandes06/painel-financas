@@ -1,0 +1,14 @@
+node_modules
+/dist
+graphify-out
+.DS_Store
+
+# Segredos: nunca versionar
+.env
+.env.*
+!.env.example
+credentials/
+*service-account*.json
+gas/.web/
+
+# gas/dist é versionado de propósito: o Loader.gs do Apps Script baixa estes arquivos.
