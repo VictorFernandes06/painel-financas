@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AlertTriangle, ChevronLeft, ChevronRight, Loader2, Menu, Plus, RefreshCw, X } from 'lucide-react';
 import { useLocalStorage } from '../hooks/useLocalStorage';
 import { useTransactions } from '../hooks/useTransactions';
@@ -40,6 +40,18 @@ export default function Dashboard() {
   const readOnly = Boolean(status?.readOnly);
   const today = new Date();
   const [month, setMonth] = useState(() => monthKey(today)); // mês escolhido "AAAA-MM"
+  // O salário do fim do mês paga o mês seguinte: se o mês atual está vazio e o
+  // próximo já tem lançamentos, o painel abre no próximo.
+  const pickedStart = useRef(false);
+  useEffect(() => {
+    if (pickedStart.current || !transactions.length) return;
+    pickedStart.current = true;
+    const now = monthKey(new Date());
+    const d = new Date();
+    const next = monthKey(new Date(d.getFullYear(), d.getMonth() + 1, 1));
+    const has = (key) => transactions.some((t) => t.date.startsWith(key));
+    if (!has(now) && has(next)) setMonth(next);
+  }, [transactions]);
   const currentMonth = month;
   const monthDate = useMemo(() => {
     const [y, m] = month.split('-').map(Number);
