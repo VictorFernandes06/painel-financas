@@ -54,8 +54,8 @@ export function validateTransactionInput(body, options) {
     else if (groups[group]?.length && category && !groups[group].includes(category)) {
       errors.push(`"${category}" não pertence ao grupo ${group} no Cadastro.`);
     }
-    if (!NATURES.includes(nature)) errors.push(`Tipo deve ser: ${NATURES.join(', ')}.`);
-    if (!PAYMENT_METHODS.includes(payment)) errors.push(`Forma de pagamento deve ser: ${PAYMENT_METHODS.join(', ')}.`);
+    if (nature && !NATURES.includes(nature)) errors.push(`Tipo deve ser: ${NATURES.join(', ')}.`);
+    if (payment && !PAYMENT_METHODS.includes(payment)) errors.push(`Forma de pagamento deve ser: ${PAYMENT_METHODS.join(', ')}.`);
     if (!STATUSES.includes(status)) errors.push(`Status deve ser: ${STATUSES.join(', ')}.`);
     if (card && options?.cards?.length && !options.cards.includes(card)) errors.push(`Cartão "${card}" não está no Cadastro.`);
     if (!Number.isInteger(installment) || installment < 1 || installment > 360) errors.push('Parcela inválida.');

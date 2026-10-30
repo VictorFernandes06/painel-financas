@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
-import { AlertCircle, CalendarClock, Check, CreditCard, Loader2, Pencil, Target, X } from 'lucide-react';
+import { AlertCircle, CalendarClock, CreditCard, Loader2, Pencil, Target, X } from 'lucide-react';
 import { TYPES } from '../data/categories';
-import { formatCurrency, formatDate, monthKey, monthLabel, parseAmountInput, toISODate } from '../utils/format';
+import { formatCurrency, monthKey, monthLabel, parseAmountInput, toISODate } from '../utils/format';
 
 const todayISO = () => toISODate(new Date());
 const addMonthKey = (key, n) => {
@@ -27,99 +27,85 @@ function Section({ icon: Icon, title, subtitle, action, children }) {
   );
 }
 
-// --- 1. Contas a pagar -------------------------------------------------------
+// --- 1. Previsão dos próximos meses ----------------------------------------
 
-function PayButton({ bill, accounts, disabled, onPay }) {
-  const [account, setAccount] = useState(bill.account || '');
-  const [busy, setBusy] = useState(false);
-  const pay = async () => {
-    setBusy(true);
-    try {
-      await onPay(bill, account);
-    } catch {
-      setBusy(false); // a mensagem aparece no aviso do topo
-    }
-  };
-  return (
-    <div className="flex items-center gap-2">
-      {accounts.length > 0 && (
-        <select
-          aria-label="Pagar com qual conta"
-          className="input h-8 w-32 px-2 py-1 text-xs"
-          value={account}
-          onChange={(e) => setAccount(e.target.value)}
-        >
-          <option value="">Sem conta</option>
-          {accounts.map((a) => <option key={a} value={a}>{a}</option>)}
-        </select>
-      )}
-      <button type="button" className="btn-primary h-8 px-3 text-xs" disabled={disabled || busy} onClick={pay}>
-        {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Check className="h-3.5 w-3.5" />}
-        Pagar
-      </button>
-    </div>
-  );
-}
-
-function Bills({ transactions, accounts, readOnly, busy, onPay }) {
+function Forecast({ transactions, startBalance, onOpenBills }) {
   const today = todayISO();
-  const bills = useMemo(
-    () =>
-      transactions
-        .filter((t) => t.type === TYPES.EXPENSE && (t.status === 'A Pagar' || t.status === 'Atrasado'))
-        .sort((a, b) => a.date.localeCompare(b.date)),
-    [transactions],
-  );
-  const late = bills.filter((b) => b.date < today);
-  const month = monthKey(today);
-  const thisMonth = bills.filter((b) => b.date >= today && b.date.startsWith(month));
-  const later = bills.filter((b) => b.date >= today && !b.date.startsWith(month)).slice(0, 15);
-  const total = (list) => formatCurrency(list.reduce((s, b) => s + b.amount, 0));
-
-  const groups = [
-    ['Vencidas', late, 'text-expense'],
-    ['Ainda neste mês', thisMonth, 'text-amber-400'],
-    ['Próximos meses', later, 'text-muted-foreground'],
-  ].filter(([, list]) => list.length);
+  const start = monthKey(new Date());
+  const months = useMemo(() => {
+    const keys = Array.from({ length: 6 }, (_, i) => addMonthKey(start, i));
+    let balance = startBalance;
+    return keys.map((key, i) => {
+      let entra = 0;
+      let sai = 0;
+      let count = 0;
+      for (const t of transactions) {
+        const k = t.date.slice(0, 7);
+        // Contas atrasadas de meses passados entram no mês atual.
+        const inMonth = k === key || (i === 0 && k < key);
+        if (!inMonth) continue;
+        if (t.type === TYPES.INCOME) {
+          if (t.date > today) entra += t.amount;
+        } else if (t.status && t.status !== 'Pago') {
+          sai += t.amount;
+          count += 1;
+        }
+      }
+      balance += entra - sai;
+      return { key, entra, sai, count, sobra: entra - sai, fim: balance };
+    });
+  }, [transactions, startBalance, start, today]);
+  const max = Math.max(...months.map((m) => Math.abs(m.fim)), 1);
 
   return (
     <Section
       icon={CalendarClock}
-      title="Contas a pagar"
-      subtitle={bills.length ? `${bills.length} em aberto · ${total(bills)}` : 'Despesas com status "A Pagar" ou "Atrasado" aparecem aqui'}
+      title="Previsão dos próximos meses"
+      subtitle={`Começa com ${formatCurrency(startBalance)} (o que tem hoje nas contas) e soma o que vai entrar menos o que falta pagar.`}
+      action={<button type="button" className="btn-ghost h-8 px-2 text-xs" onClick={onOpenBills}>Ver contas a pagar</button>}
     >
-      {groups.length === 0 ? (
-        <p className="p-5 text-sm text-muted-foreground">Tudo pago. Nenhuma conta em aberto.</p>
-      ) : (
-        groups.map(([label, list, tone]) => (
-          <div key={label}>
-            <p className={`flex justify-between bg-muted/40 px-5 py-2 text-xs font-medium ${tone}`}>
-              <span>{label}</span>
-              <span>{total(list)}</span>
-            </p>
-            <ul className="divide-y divide-border/60">
-              {list.map((b) => (
-                <li key={b.id} className="flex flex-col gap-2 px-5 py-3 sm:flex-row sm:items-center sm:justify-between">
-                  <div className="min-w-0">
-                    <p className="truncate text-sm font-medium">
-                      {b.description || b.category}
-                      {b.installments > 1 && <span className="text-muted-foreground"> · {b.installment}/{b.installments}</span>}
-                    </p>
-                    <p className="truncate text-xs text-muted-foreground">
-                      {formatDate(b.date)} · {b.group} › {b.category}{b.card && ` · ${b.card}`}
-                    </p>
-                  </div>
-                  <div className="flex items-center justify-between gap-3 sm:justify-end">
-                    <span className="text-sm font-semibold tabular-nums text-expense">{formatCurrency(b.amount)}</span>
-                    {!readOnly && <PayButton bill={b} accounts={accounts} disabled={busy} onPay={onPay} />}
-                  </div>
-                </li>
-              ))}
-            </ul>
+      <div className="grid grid-cols-2 gap-3 p-5 md:grid-cols-3 xl:grid-cols-6">
+        {months.map((m, i) => (
+          <div key={m.key} className={`anim-fade-up rounded-xl border p-3 ${i === 0 ? 'border-emerald-400/40 bg-emerald-500/[0.04]' : 'border-border'}`} style={{ animationDelay: `${i * 60}ms` }}>
+            <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{i === 0 ? 'Este mês' : monthLabel(m.key)}</p>
+            <dl className="mt-2 space-y-0.5 text-xs">
+              <div className="flex justify-between gap-2"><dt className="text-zinc-500">Entra</dt><dd className="tabular-nums text-income">{formatCurrency(m.entra)}</dd></div>
+              <div className="flex justify-between gap-2"><dt className="text-zinc-500">A pagar</dt><dd className="tabular-nums text-expense">{formatCurrency(m.sai)}</dd></div>
+            </dl>
+            <p className="mt-2 text-[11px] text-zinc-500">Termina o mês com</p>
+            <p className={`text-base font-semibold tabular-nums ${m.fim < 0 ? 'text-expense' : 'text-zinc-50'}`}>{formatCurrency(m.fim)}</p>
+            <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-muted">
+              <div className={`anim-grow-x h-full rounded-full ${m.fim < 0 ? 'bg-expense' : 'bg-gradient-to-r from-emerald-500 to-cyan-400'}`} style={{ width: `${(Math.abs(m.fim) / max) * 100}%` }} />
+            </div>
+            {m.fim < 0 && <p className="mt-1 text-[11px] text-expense">Vai faltar dinheiro</p>}
           </div>
-        ))
-      )}
+        ))}
+      </div>
     </Section>
+  );
+}
+
+function HowItWorks() {
+  const items = [
+    ['Previsão', 'Mostra com quanto você termina cada mês, se tudo for pago como está lançado. Se ficar vermelho, vai faltar dinheiro.'],
+    ['Limites por grupo', 'Você define quanto quer gastar no máximo em cada grupo (ex.: Lazer R$ 300). A barra enche conforme gasta e avisa quando passar.'],
+    ['Faturas dos cartões', 'Soma as compras feitas com forma de pagamento "Cartão", mês a mês, incluindo parcelas futuras.'],
+  ];
+  return (
+    <section className="card anim-fade-up p-5">
+      <h2 className="font-semibold">Como funciona o Planejamento</h2>
+      <p className="mt-1 text-sm text-muted-foreground">
+        Aqui você olha para frente. Para marcar uma conta como paga, use <span className="text-zinc-200">Despesas › A pagar</span>.
+      </p>
+      <ol className="mt-4 grid gap-3 sm:grid-cols-3">
+        {items.map(([title, text], i) => (
+          <li key={title} className="rounded-xl border border-border p-3">
+            <p className="text-sm font-medium"><span className="mr-1.5 text-emerald-400">{i + 1}.</span>{title}</p>
+            <p className="mt-1 text-xs leading-relaxed text-muted-foreground">{text}</p>
+          </li>
+        ))}
+      </ol>
+    </section>
   );
 }
 
@@ -258,7 +244,6 @@ function CardBills({ transactions, cards }) {
       const row = map.get(card);
       row[key] = (row[key] ?? 0) + t.amount;
     }
-    for (const c of cards) if (!map.has(c)) map.set(c, {});
     return [...map.entries()];
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [transactions, cards, start]);
@@ -290,14 +275,13 @@ function CardBills({ transactions, cards }) {
   );
 }
 
-/** Página "Planejamento": contas a pagar, orçamento por grupo e faturas. */
-export default function PlanningPage({ data, readOnly, canEditBudgets }) {
-  const { transactions, options, budgets, saving } = data;
-  const pay = (bill, account) => data.update(bill, { status: 'Pago', ...(account ? { account } : {}) });
-
+/** Página "Planejamento": previsão, limites por grupo e faturas. */
+export default function PlanningPage({ data, readOnly, canEditBudgets, startBalance = 0, navigate }) {
+  const { transactions, options, budgets } = data;
   return (
     <div className="space-y-6">
-      <Bills transactions={transactions} accounts={options.accounts ?? []} readOnly={readOnly} busy={saving} onPay={pay} />
+      <HowItWorks />
+      <Forecast transactions={transactions} startBalance={startBalance} onOpenBills={() => navigate?.('despesas', 'apagar')} />
       <div className="grid gap-6 lg:grid-cols-2">
         <Budgets
           transactions={transactions}

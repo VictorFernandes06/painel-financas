@@ -171,3 +171,10 @@ test('receita recorrente cria uma linha por mês', async () => {
   const bad = await call('POST', '/transactions', { type: 'receita', date: '2026-10-01', category: 'Salário', amount: 1, repeat: 100 });
   assert.equal(bad.status, 400);
 });
+
+test('aceita despesa sem forma de pagamento (linhas antigas da planilha)', async () => {
+  const { status } = await call('POST', '/transactions', expense({ payment: '', status: 'A Pagar' }));
+  assert.equal(status, 201);
+  const bad = await call('POST', '/transactions', expense({ payment: 'Boleto' }));
+  assert.equal(bad.status, 400);
+});

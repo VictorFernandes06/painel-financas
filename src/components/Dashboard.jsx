@@ -106,7 +106,7 @@ export default function Dashboard() {
     receitas: `${formatCurrency(summary.monthIncome)} em ${MONTH_NAMES[monthDate.getMonth()].slice(0, 3)}`,
     despesas: `${formatCurrency(summary.monthExpense)} em ${MONTH_NAMES[monthDate.getMonth()].slice(0, 3)}`,
     contas: `${formatCurrency(summary.balance)} no total`,
-    planejamento: 'Contas, limites e metas',
+    planejamento: 'Previsão, limites e cartões',
   };
 
   return (
@@ -260,7 +260,7 @@ export default function Dashboard() {
                 />
               )}
               {page === 'contas' && <AccountsPage data={data} readOnly={readOnly || !status} tab={route.tab} />}
-              {page === 'planejamento' && <PlanningPage data={data} readOnly={readOnly || !status} canEditBudgets={hasAccounts} />}
+              {page === 'planejamento' && <PlanningPage data={data} readOnly={readOnly || !status} canEditBudgets={hasAccounts} startBalance={summary.balance} navigate={navigate} />}
             </div>
           )}
 

@@ -261,7 +261,7 @@ export default function Overview({ data, summary, month, monthName, monthDate, g
             subtitle={`${formatCurrency(summary.balance)} guardados`} onClick={() => navigate('contas', 'saldos')} />
           <ModuleTile icon={Target} tone="amber" title="Planejamento" delay={210}
             value={<Count value={attention.length} />} valueLabel={attention.length === 1 ? 'alerta' : 'alertas'}
-            subtitle="Contas a pagar, limites e metas" onClick={() => navigate('planejamento')} />
+            subtitle="Previsão, limites e cartões" onClick={() => navigate('planejamento')} />
         </div>
       </section>
 

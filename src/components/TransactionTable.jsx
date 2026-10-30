@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { ArrowDownCircle, ArrowUpCircle, Check, Loader2, Maximize2, Pencil, Search, Trash2, X } from 'lucide-react';
+import { ArrowDownCircle, ArrowUpCircle, Check, CheckCircle2, Clock, Flag, Loader2, Maximize2, Pencil, Search, Trash2, TriangleAlert, X } from 'lucide-react';
 import { STATUSES, TYPES } from '../data/categories';
 import { formatCurrency, formatDate, monthLabel, parseAmountInput } from '../utils/format';
 
@@ -73,10 +73,82 @@ function DeleteButton({ onConfirm, description, disabled }) {
 }
 
 const STATUS_STYLE = {
-  Pago: 'text-zinc-400',
+  Pago: 'text-emerald-300',
   'A Pagar': 'text-amber-400',
   Atrasado: 'text-expense',
 };
+
+/** Selo de status: "Pago" em verde neon, bem visível. */
+function StatusPill({ status, overdue }) {
+  if (!status) return null;
+  if (status === 'Pago') {
+    return (
+      <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/15 px-2 py-0.5 text-xs font-semibold text-emerald-300 shadow-[0_0_12px_rgba(52,211,153,0.35)] ring-1 ring-emerald-400/50">
+        <CheckCircle2 className="h-3.5 w-3.5" aria-hidden /> Pago
+      </span>
+    );
+  }
+  const late = status === 'Atrasado' || overdue;
+  const Icon = late ? TriangleAlert : Clock;
+  return (
+    <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium ring-1 ${
+      late ? 'bg-expense/10 text-expense ring-expense/40' : 'bg-amber-500/10 text-amber-300 ring-amber-400/30'
+    }`}>
+      <Icon className="h-3.5 w-3.5" aria-hidden /> {late ? 'Atrasado' : 'A pagar'}
+    </span>
+  );
+}
+
+/** Bandeira "marcar como pago": escolhe de qual conta saiu o dinheiro e confirma. */
+function PayFlag({ transaction, accounts = [], onPay, disabled }) {
+  const [open, setOpen] = useState(false);
+  const [account, setAccount] = useState(transaction.account || '');
+  const [busy, setBusy] = useState(false);
+  if (!open) {
+    return (
+      <button
+        type="button"
+        disabled={disabled}
+        onClick={() => setOpen(true)}
+        className="inline-flex items-center gap-1 rounded-full border border-emerald-400/40 px-2 py-0.5 text-xs font-medium text-emerald-300 transition-colors hover:bg-emerald-500/15 hover:shadow-[0_0_12px_rgba(52,211,153,0.35)] disabled:opacity-40"
+        title="Marcar como pago"
+      >
+        <Flag className="h-3.5 w-3.5" aria-hidden /> Marcar pago
+      </button>
+    );
+  }
+  const confirm = async () => {
+    setBusy(true);
+    try {
+      await onPay(transaction, account);
+    } catch {
+      setBusy(false);
+    }
+  };
+  return (
+    <span className="inline-flex flex-wrap items-center gap-1">
+      {accounts.length > 0 && (
+        <select
+          aria-label="Saiu de qual conta"
+          className="input h-7 w-36 px-2 py-0 text-xs"
+          value={account}
+          onChange={(e) => setAccount(e.target.value)}
+          autoFocus
+        >
+          <option value="">Saiu de qual conta?</option>
+          {accounts.map((a) => <option key={a} value={a}>{a}</option>)}
+        </select>
+      )}
+      <button type="button" onClick={confirm} disabled={busy}
+        className="inline-flex h-7 items-center gap-1 rounded-md bg-emerald-500/20 px-2 text-xs font-semibold text-emerald-300 hover:bg-emerald-500/30 disabled:opacity-60">
+        {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Check className="h-3.5 w-3.5" />} Pago
+      </button>
+      <button type="button" onClick={() => setOpen(false)} disabled={busy} className="rounded-md p-1 text-muted-foreground hover:text-zinc-100" aria-label="Cancelar">
+        <X className="h-3.5 w-3.5" />
+      </button>
+    </span>
+  );
+}
 
 /** Título e categoria exibidos de cada lançamento. */
 const titleOf = (t) => t.description || t.category;
@@ -165,8 +237,9 @@ const normalizeSearch = (v) => String(v ?? '').normalize('NFD').replace(/[\u0300
 
 export default function TransactionTable({
   transactions, readOnly, busy, onUpdate, onDelete, onEdit, month, monthName,
-  fixedType, filterFn, forceAll = false, title = 'Histórico de transações', subtitle,
+  fixedType, filterFn, forceAll = false, title = 'Histórico de transações', subtitle, accounts = [], onPay,
 }) {
+  const todayISO = new Date().toISOString().slice(0, 10);
   const [typeFilter, setFilter] = useState('all');
   const filter = fixedType ?? typeFilter;
   const [query, setQuery] = useState('');
@@ -294,7 +367,7 @@ export default function TransactionTable({
                   <th className="px-5 py-3 font-medium">Data</th>
                   <th className="px-5 py-3 font-medium">Descrição</th>
                   <th className="px-5 py-3 font-medium">Categoria</th>
-                  <th className="px-5 py-3 font-medium">Tipo / Status</th>
+                  <th className="px-5 py-3 font-medium">{fixedType ? (fixedType === TYPES.INCOME ? 'Conta' : 'Status') : 'Tipo / Status'}</th>
                   <th className="px-5 py-3 text-right font-medium">Valor</th>
                   <th className="w-px px-5 py-3"><span className="sr-only">Ações</span></th>
                 </tr>
@@ -336,8 +409,15 @@ export default function TransactionTable({
                         <span className="text-zinc-500">{installmentOf(t)}</span>
                       </td>
                       <td className="px-5 py-3">
-                        <TypeBadge type={t.type} />
-                        {t.status && <span className={`ml-2 text-xs ${STATUS_STYLE[t.status] ?? 'text-zinc-400'}`}>{t.status}</span>}
+                        <span className="flex flex-wrap items-center gap-1.5">
+                          {fixedType ? null : <TypeBadge type={t.type} />}
+                          <StatusPill status={t.status} overdue={t.date < todayISO} />
+                          {t.status && t.status !== 'Pago' && !readOnly && onPay && (
+                            <PayFlag transaction={t} accounts={accounts} onPay={onPay} disabled={busy} />
+                          )}
+                        </span>
+                        {t.status === 'Pago' && t.account && <span className="mt-0.5 block text-[11px] text-zinc-500">saiu de {t.account}</span>}
+                        {t.type === TYPES.INCOME && t.account && <span className="mt-0.5 block text-[11px] text-zinc-500">entrou em {t.account}</span>}
                       </td>
                       <td className={`whitespace-nowrap px-5 py-3 text-right font-medium tabular-nums ${amountClass(t)}`}>
                         {sign(t)} {formatCurrency(t.amount)}
@@ -378,9 +458,10 @@ export default function TransactionTable({
               </li>
             ) : (
               <li key={t.id} className="flex items-center justify-between gap-2 px-4 py-3">
+                <div className="min-w-0 flex-1">
                 <button
                   type="button"
-                  className="min-w-0 flex-1 text-left"
+                  className="block w-full min-w-0 text-left"
                   disabled={readOnly}
                   onClick={() => onEdit(t)}
                   aria-label={`Editar ${titleOf(t)}`}
@@ -388,9 +469,16 @@ export default function TransactionTable({
                   <p className="truncate font-medium">{titleOf(t)}</p>
                   <p className="truncate text-xs text-muted-foreground">
                     {formatDate(t.date)} · {categoryOf(t)}{installmentOf(t)}
-                    {t.status && t.status !== 'Pago' && <span className={STATUS_STYLE[t.status]}> · {t.status}</span>}
+                    {t.account && <span> · {t.account}</span>}
                   </p>
                 </button>
+                {t.status && (
+                  <span className="mt-1.5 flex flex-wrap items-center gap-1.5">
+                    <StatusPill status={t.status} overdue={t.date < todayISO} />
+                    {t.status !== 'Pago' && !readOnly && onPay && <PayFlag transaction={t} accounts={accounts} onPay={onPay} disabled={busy} />}
+                  </span>
+                )}
+                </div>
                 <div className="flex shrink-0 items-center gap-1">
                   <span className={`text-sm font-medium tabular-nums ${amountClass(t)}`}>
                     {sign(t)} {formatCurrency(t.amount)}
