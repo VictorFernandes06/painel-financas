@@ -48,8 +48,12 @@ function painel_() {
 }
 
 function doGet() {
-  return HtmlService.createHtmlOutput(painelBaixar_('gas/dist/index.html'))
-    .setTitle('Finanças Pessoais')
+  var html = painelBaixar_('gas/dist/index.html');
+  var painel = painel_();
+  // O título, o ícone e o resto da página vêm do GitHub (painel.web).
+  if (painel.web) return painel.web(html);
+  return HtmlService.createHtmlOutput(html)
+    .setTitle('Fôlego · Finanças')
     .addMetaTag('viewport', 'width=device-width, initial-scale=1');
 }
 

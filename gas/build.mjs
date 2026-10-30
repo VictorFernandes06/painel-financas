@@ -23,9 +23,7 @@ const server = await esbuild({
 const footer = `
 // ===== Funções chamadas pelo navegador =====
 function doGet() {
-  return HtmlService.createHtmlOutputFromFile('index')
-    .setTitle('Finanças Pessoais')
-    .addMetaTag('viewport', 'width=device-width, initial-scale=1');
+  return Painel.web(HtmlService.createHtmlOutputFromFile('index').getContent());
 }
 function apiStatus() { return Painel.api.status(); }
 function apiOptions() { return Painel.api.options(); }

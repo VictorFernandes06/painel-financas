@@ -21,7 +21,8 @@ var Painel = (() => {
   // gas/src/entry.js
   var entry_exports = {};
   __export(entry_exports, {
-    api: () => api
+    api: () => api,
+    web: () => web
   });
 
   // shared/categories.js
@@ -711,14 +712,21 @@ var Painel = (() => {
     createTransfer: (body) => backend().createTransfer(body),
     removeTransfer: (row, expected) => backend().removeTransfer(row, expected)
   };
+  var ICON_URL = "https://raw.githubusercontent.com/VictorFernandes06/painel-financas/main/public/icon-180.png";
+  function web(html) {
+    let out = HtmlService.createHtmlOutput(html).setTitle("Fôlego · Finanças");
+    try {
+      out = out.setFaviconUrl(ICON_URL);
+    } catch (e) {
+    }
+    return out.addMetaTag("viewport", "width=device-width, initial-scale=1").addMetaTag("apple-mobile-web-app-capable", "yes").addMetaTag("mobile-web-app-capable", "yes");
+  }
   return __toCommonJS(entry_exports);
 })();
 
 // ===== Funções chamadas pelo navegador =====
 function doGet() {
-  return HtmlService.createHtmlOutputFromFile('index')
-    .setTitle('Finanças Pessoais')
-    .addMetaTag('viewport', 'width=device-width, initial-scale=1');
+  return Painel.web(HtmlService.createHtmlOutputFromFile('index').getContent());
 }
 function apiStatus() { return Painel.api.status(); }
 function apiOptions() { return Painel.api.options(); }
