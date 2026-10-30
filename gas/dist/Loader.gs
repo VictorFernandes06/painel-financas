@@ -59,6 +59,20 @@ function apiCall(name, args) {
   return api[name].apply(null, args || []);
 }
 
+// Nomes antigos: se o navegador ainda abrir a tela antiga, ela continua funcionando.
+function apiStatus() { return apiCall('status', []); }
+function apiOptions() { return apiCall('options', []); }
+function apiList() { return apiCall('list', []); }
+function apiCreate(b) { return apiCall('create', [b]); }
+function apiUpdate(t, r, b, e) { return apiCall('update', [t, r, b, e]); }
+function apiRemove(t, r, e) { return apiCall('remove', [t, r, e]); }
+function apiAccounts() { return apiCall('accounts', []); }
+function apiSaveBudgets(b) { return apiCall('saveBudgets', [b]); }
+function apiSaveAccount(b, r, n) { return apiCall('saveAccount', [b, r, n]); }
+function apiRemoveAccount(r, n) { return apiCall('removeAccount', [r, n]); }
+function apiCreateTransfer(b) { return apiCall('createTransfer', [b]); }
+function apiRemoveTransfer(r, e) { return apiCall('removeTransfer', [r, e]); }
+
 // Rode esta função uma vez no editor para autorizar o acesso à internet e à planilha.
 function autorizar() {
   painelBaixar_('gas/dist/painel-server.js');
