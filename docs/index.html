@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Fôlego</title>
+  <meta name="apple-mobile-web-app-title" content="Fôlego" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="theme-color" content="#09090b" />
+  <link rel="apple-touch-icon" href="icon-180.png" />
+  <link rel="icon" type="image/svg+xml" href="favicon.svg" />
+  <link rel="icon" type="image/png" sizes="512x512" href="icon-512.png" />
+  <style>
+    :root { color-scheme: dark; }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; min-height: 100vh; display: flex; align-items: center; justify-content: center;
+      background: radial-gradient(circle at 20% 10%, #12352b 0%, #09090b 55%); color: #f4f4f5;
+      font: 16px/1.5 Inter, system-ui, -apple-system, sans-serif; padding: 24px 16px;
+    }
+    .box { width: 100%; max-width: 420px; text-align: center; }
+    .logo { width: 96px; height: 96px; border-radius: 24px; box-shadow: 0 10px 40px -10px rgba(16,185,129,.6); animation: pop .6s cubic-bezier(.22,1,.36,1) both; }
+    h1 { margin: 18px 0 2px; font-size: 28px; background: linear-gradient(90deg,#6ee7b7,#67e8f9); -webkit-background-clip: text; background-clip: text; color: transparent; }
+    .sub { margin: 0 0 24px; color: #a1a1aa; font-size: 13px; letter-spacing: .18em; text-transform: uppercase; }
+    .card { text-align: left; background: rgba(255,255,255,.04); border: 1px solid rgba(255,255,255,.08); border-radius: 16px; padding: 18px; }
+    ol { margin: 8px 0 0; padding-left: 20px; color: #d4d4d8; }
+    li { margin: 6px 0; }
+    input { width: 100%; margin: 10px 0; padding: 12px; border-radius: 10px; border: 1px solid #3f3f46; background: #09090b; color: #f4f4f5; font-size: 15px; }
+    button, .btn { display: block; width: 100%; padding: 12px; border: 0; border-radius: 10px; background: #f4f4f5; color: #09090b; font-weight: 600; font-size: 15px; text-align: center; text-decoration: none; cursor: pointer; }
+    .err { color: #f87171; font-size: 13px; min-height: 1em; }
+    .muted { color: #71717a; font-size: 12px; margin-top: 14px; }
+    .spin { width: 22px; height: 22px; margin: 4px auto 0; border: 2px solid #3f3f46; border-top-color: #34d399; border-radius: 50%; animation: s 0.8s linear infinite; }
+    [hidden] { display: none !important; }
+    @keyframes s { to { transform: rotate(360deg); } }
+    @keyframes pop { from { opacity: 0; transform: scale(.85); } to { opacity: 1; transform: none; } }
+  </style>
+</head>
+<body>
+  <div class="box">
+    <img class="logo" src="icon-512.png" alt="" />
+    <h1>Fôlego</h1>
+    <p class="sub">Finanças pessoais</p>
+
+    <div id="abrindo" hidden><div class="spin"></div><p class="muted">Abrindo seu painel…</p></div>
+
+    <div id="instalar" class="card" hidden>
+      <strong>Falta só um passo</strong>
+      <ol>
+        <li>Toque em <b>Compartilhar</b> (o quadrado com a seta) na barra do Safari.</li>
+        <li>Escolha <b>Adicionar à Tela de Início</b> e toque em <b>Adicionar</b>.</li>
+      </ol>
+      <p class="muted">O ícone do Fôlego vai para a tela do celular. Depois é só abrir por ele.</p>
+      <a id="abrir" class="btn" href="#">Abrir o painel agora</a>
+    </div>
+
+    <form id="config" class="card" hidden>
+      <strong>Configurar o atalho</strong>
+      <p class="muted" style="margin-top:4px">Cole o link do seu painel (o que termina em <b>/exec</b>).</p>
+      <input id="link" type="url" inputmode="url" placeholder="https://script.google.com/macros/s/…/exec" autocomplete="off" />
+      <p id="erro" class="err"></p>
+      <button type="submit">Continuar</button>
+    </form>
+  </div>
+  <script>
+    (function () {
+      var ok = function (u) { return /^https:\/\/script\.google\.com\/(a\/[^/]+\/)?macros\/s\/[\w-]+\/(exec|dev)(\?.*)?$/.test(u); };
+      var params = new URLSearchParams(location.search);
+      var alvo = params.get('app') || '';
+      var standalone = window.navigator.standalone === true || matchMedia('(display-mode: standalone)').matches;
+      var show = function (id) { document.getElementById(id).hidden = false; };
+      if (ok(alvo)) {
+        if (standalone) {
+          show('abrindo');
+          location.replace(alvo);
+        } else {
+          document.getElementById('abrir').href = alvo;
+          show('instalar');
+        }
+        return;
+      }
+      show('config');
+      document.getElementById('config').addEventListener('submit', function (e) {
+        e.preventDefault();
+        var v = document.getElementById('link').value.trim();
+        if (!ok(v)) {
+          document.getElementById('erro').textContent = 'Esse não parece o link do painel. Ele começa com https://script.google.com/macros/s/ e termina em /exec.';
+          return;
+        }
+        location.href = location.pathname + '?app=' + encodeURIComponent(v);
+      });
+    })();
+  </script>
+</body>
+</html>
