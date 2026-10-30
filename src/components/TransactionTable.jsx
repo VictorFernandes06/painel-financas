@@ -79,12 +79,13 @@ const STATUS_STYLE = {
 };
 
 /** Selo de status: "Pago" em verde neon, bem visível. */
-function StatusPill({ status, overdue }) {
+function StatusPill({ status, overdue, auto }) {
   if (!status) return null;
   if (status === 'Pago') {
     return (
-      <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/15 px-2 py-0.5 text-xs font-semibold text-emerald-300 shadow-[0_0_12px_rgba(52,211,153,0.35)] ring-1 ring-emerald-400/50">
-        <CheckCircle2 className="h-3.5 w-3.5" aria-hidden /> Pago
+      <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/15 px-2 py-0.5 text-xs font-semibold text-emerald-300 shadow-[0_0_12px_rgba(52,211,153,0.35)] ring-1 ring-emerald-400/50"
+        title={auto ? 'Débito automático: baixa feita sozinha no dia' : undefined}>
+        <CheckCircle2 className="h-3.5 w-3.5" aria-hidden /> Pago{auto && <span className="font-normal text-emerald-200/80">· automático</span>}
       </span>
     );
   }
@@ -479,7 +480,7 @@ export default function TransactionTable({
                       <td className="px-5 py-3">
                         <span className="flex flex-wrap items-center gap-1.5">
                           {fixedType ? null : <TypeBadge type={t.type} />}
-                          <StatusPill status={t.status} overdue={t.date < todayISO} />
+                          <StatusPill status={t.status} overdue={t.date < todayISO} auto={t.autoPaid} />
                           {t.type === TYPES.INCOME && <IncomePill transaction={t} today={todayISO} />}
                           {t.type === TYPES.INCOME && (t.receivedAt || t.date) > todayISO && !readOnly && onReceive && (
                             <ReceiveFlag transaction={t} accounts={accounts} onReceive={onReceive} disabled={busy} today={todayISO} />
@@ -554,7 +555,7 @@ export default function TransactionTable({
                 )}
                 {t.status && (
                   <span className="mt-1.5 flex flex-wrap items-center gap-1.5">
-                    <StatusPill status={t.status} overdue={t.date < todayISO} />
+                    <StatusPill status={t.status} overdue={t.date < todayISO} auto={t.autoPaid} />
                     {t.status !== 'Pago' && !readOnly && onPay && <PayFlag transaction={t} accounts={accounts} onPay={onPay} disabled={busy} />}
                   </span>
                 )}

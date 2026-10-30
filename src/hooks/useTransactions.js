@@ -1,5 +1,18 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { api } from '../api/client';
+import { toISODate } from '../utils/format';
+
+/**
+ * Débito automático: despesa com forma "Débito" e conta escolhida conta como paga
+ * sozinha quando chega o dia (dá baixa automática), sem precisar marcar.
+ */
+export function withAutoDebit(list, today = toISODate(new Date())) {
+  return list.map((t) =>
+    t.type === 'despesa' && t.status && t.status !== 'Pago' && t.payment === 'Débito' && t.account && t.date <= today
+      ? { ...t, status: 'Pago', autoPaid: true }
+      : t,
+  );
+}
 
 /**
  * Carrega as transações da planilha e expõe ações de criar, editar e excluir.
@@ -30,7 +43,7 @@ export function useTransactions() {
       setBudgets(acc?.budgets ?? {});
       setStatus(info);
       setOptions(opts);
-      setTransactions(data.transactions);
+      setTransactions(withAutoDebit(data.transactions));
       setWarnings(data.warnings ?? []);
       setError(null);
     } catch (err) {
